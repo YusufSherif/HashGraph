@@ -257,6 +257,7 @@ size_t HashGraph<VERTEX, EDGE, KEY>::getStructureSize() {
 	}
 */
 
+	//The following method was extracted from: https://stackoverflow.com/a/22500304
 	auto entrySize = sizeof(KEY) + sizeof(VERTEX) + sizeof(void *);
 	auto bucketSize = sizeof(void *);
 	auto adminSize = 3 * sizeof(void *) + sizeof(size_t);
