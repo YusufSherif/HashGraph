@@ -94,7 +94,7 @@ int HashGraph<VERTEX, EDGE, KEY>::get_weight_of(const KEY &fromVertex, const KEY
 	auto x = edges.find(std::make_pair(fromVertex, toVertex));
 	if (x == edges.end())
 		return INT_MAX;
-	return x->second->getWeight();
+	return (*x->second).getWeight();
 }
 
 template<typename VERTEX, typename EDGE, typename KEY>
