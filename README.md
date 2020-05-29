@@ -9,4 +9,7 @@ This graph utilizes unordered_maps to store vertices with its key in an unordere
  Elementary Path Finding as per Johnson's paper<a href = "https://www.cs.tufts.edu/comp/150GA/homeworks/hw1/Johnson%2075.PDF">*</a><br>
   DFS<br> 
   BFS<br> 
+  <br>
+  For proper use, a user may inherit both the edge and vertex classes into his own link and node classes and use 
+  the graph functions seamlessly.
  
