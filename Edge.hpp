@@ -10,12 +10,16 @@ class Edge {
 protected:
 	int weight{};
 public:
-	Edge() = default;
 	Edge(int p_weight = 0);
 	void setWeight(size_t w);
 	size_t getWeight();
+	Edge* operator->();
 	~Edge() = default;
 };
+
+Edge *Edge::operator->() {
+	return this;
+}
 
 Edge::Edge(int p_weight) {
 	weight = p_weight;

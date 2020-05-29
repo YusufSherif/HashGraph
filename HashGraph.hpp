@@ -38,7 +38,7 @@ public:
 
 	const VERTEX *get_vertex(const KEY &key);
 
-	void add_edge(const KEY &fromVertex, const KEY &toVertex, int weight = 0);
+	void add_edge(const KEY &fromVertex, const KEY &toVertex, const EDGE &edge);
 
 	int get_weight_of(const KEY &fromVertex, const KEY &toVertex);
 
@@ -78,12 +78,10 @@ const VERTEX *HashGraph<VERTEX, EDGE, KEY>::get_vertex(const KEY &key) {
 }
 
 template<typename VERTEX, typename EDGE, typename KEY>
-void HashGraph<VERTEX, EDGE, KEY>::add_edge(const KEY &fromVertex, const KEY &toVertex, int weight) {
+void HashGraph<VERTEX, EDGE, KEY>::add_edge(const KEY &fromVertex, const KEY &toVertex, const EDGE &edge) {
 	auto x = edges.find(std::make_pair(fromVertex, toVertex));
 	if (x == edges.end()) {
-		edges.emplace(std::piecewise_construct,
-		              std::forward_as_tuple(std::pair(fromVertex, toVertex)),
-		              std::forward_as_tuple(weight));
+		edges.emplace(std::pair(fromVertex, toVertex),edge);
 	} else {
 		std::cerr << "HashGraph: Insertion of a duplicate edge! Abroting...\n";
 		exit(0);
@@ -96,7 +94,7 @@ int HashGraph<VERTEX, EDGE, KEY>::get_weight_of(const KEY &fromVertex, const KEY
 	auto x = edges.find(std::make_pair(fromVertex, toVertex));
 	if (x == edges.end())
 		return INT_MAX;
-	return x->second.getWeight();
+	return x->second->getWeight();
 }
 
 template<typename VERTEX, typename EDGE, typename KEY>
