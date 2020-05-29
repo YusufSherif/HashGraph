@@ -36,11 +36,13 @@ public:
 
 	void add_vertex(const VERTEX &aVertex);
 
-	const VERTEX *get_vertex(const KEY &key);
+	VERTEX &get_vertex(const KEY &key);
+
+	bool isVertex(const KEY & key);
 
 	void add_edge(const KEY &fromVertex, const KEY &toVertex, const EDGE &edge);
 
-	int get_weight_of(const KEY &fromVertex, const KEY &toVertex);
+	EDGE &get_edge(const KEY &fromVertex, const KEY &toVertex);
 
 	bool isEdge(const KEY &fromVertex, const KEY &toVertex);
 
@@ -73,8 +75,13 @@ void HashGraph<VERTEX, EDGE, KEY>::add_vertex(const VERTEX &aVertex) {
 }
 
 template<typename VERTEX, typename EDGE, typename KEY>
-const VERTEX *HashGraph<VERTEX, EDGE, KEY>::get_vertex(const KEY &key) {
-	return &vertices[key];
+VERTEX &HashGraph<VERTEX, EDGE, KEY>::get_vertex(const KEY &key) {
+	return vertices.find(key)->second;
+}
+
+template<typename VERTEX, typename EDGE, typename KEY>
+bool HashGraph<VERTEX, EDGE, KEY>::isVertex(const KEY& key) { //Check if vertex exists
+	return vertices.find(key) != vertices.end();
 }
 
 template<typename VERTEX, typename EDGE, typename KEY>
@@ -90,15 +97,12 @@ void HashGraph<VERTEX, EDGE, KEY>::add_edge(const KEY &fromVertex, const KEY &to
 }
 
 template<typename VERTEX, typename EDGE, typename KEY>
-int HashGraph<VERTEX, EDGE, KEY>::get_weight_of(const KEY &fromVertex, const KEY &toVertex) {
-	auto x = edges.find(std::make_pair(fromVertex, toVertex));
-	if (x == edges.end())
-		return INT_MAX;
-	return (*x->second).getWeight();
+EDGE & HashGraph<VERTEX, EDGE, KEY>::get_edge(const KEY &fromVertex, const KEY &toVertex) {
+	return edges.find(std::make_pair(fromVertex,toVertex))->second;
 }
 
 template<typename VERTEX, typename EDGE, typename KEY>
-bool HashGraph<VERTEX, EDGE, KEY>::isEdge(const KEY &fromVertex, const KEY &toVertex) {
+bool HashGraph<VERTEX, EDGE, KEY>::isEdge(const KEY &fromVertex, const KEY &toVertex) { //Check if edge exists
 	return edges.find(std::make_pair(fromVertex, toVertex)) != edges.end();
 }
 
@@ -249,13 +253,6 @@ void HashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths() {
 
 template<typename VERTEX, typename EDGE, typename KEY>
 size_t HashGraph<VERTEX, EDGE, KEY>::getStructureSize() {
-/*
-	size_t cap = sizeof(vertices);
-	for(typename std::map<KEY,VERTEX>::const_iterator it = vertices.begin(); it != vertices.end(); ++it){
-		cap += it->first.capacity();
-		cap += sizeof(VERTEX);
-	}
-*/
 
 	//The following method was extracted from: https://stackoverflow.com/a/22500304
 	auto entrySize = sizeof(KEY) + sizeof(VERTEX) + sizeof(void *);
