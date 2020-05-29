@@ -15,7 +15,7 @@
 template<typename VERTEX, typename EDGE, typename KEY=std::string>
 class HashGraph {
 private:
-	void _DFS(VERTEX &aVertex);
+	void _DFT(VERTEX &aVertex);
 	size_t getStructureSize();
 
 protected:
@@ -44,9 +44,9 @@ public:
 
 	bool isEdge(const KEY &fromVertex, const KEY &toVertex);
 
-	void DFS(const KEY &key);
+	void DFT(const KEY &key);
 
-	void BFS(const KEY &key);
+	void BFT(const KEY &key);
 
 	void getJohnsonElementaryPaths();
 
@@ -109,7 +109,7 @@ void HashGraph<VERTEX, EDGE, KEY>::rehash() {
 }
 
 template<typename VERTEX, typename EDGE, typename KEY>
-void HashGraph<VERTEX, EDGE, KEY>::_DFS(VERTEX &aVertex) {
+void HashGraph<VERTEX, EDGE, KEY>::_DFT(VERTEX &aVertex) {
 	std::cout << aVertex << " ";
 	aVertex.setVisited();
 
@@ -118,21 +118,21 @@ void HashGraph<VERTEX, EDGE, KEY>::_DFS(VERTEX &aVertex) {
 		if (isEdge(aVertex.getKey(), node->getKey()))    // if vertices are adjacent
 		{
 			if (!node->isVisited())
-				_DFS(*node);
+				_DFT(*node);
 		}
 	}
 }
 
 template<typename VERTEX, typename EDGE, typename KEY>
-void HashGraph<VERTEX, EDGE, KEY>::DFS(const KEY &key) {
-	_DFS(vertices[key]);
+void HashGraph<VERTEX, EDGE, KEY>::DFT(const KEY &key) {
+	_DFT(vertices[key]);
 	for (auto &it : vertices) {
 		it.second.resetVisited();
 	}
 }
 
 template<typename VERTEX, typename EDGE, typename KEY>
-void HashGraph<VERTEX, EDGE, KEY>::BFS(const KEY &key) {
+void HashGraph<VERTEX, EDGE, KEY>::BFT(const KEY &key) {
 	VERTEX &aVertex = (vertices[key]);
 
 	std::queue<const VERTEX *> que;

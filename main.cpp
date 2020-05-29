@@ -55,11 +55,10 @@ int main(int argc, char **argv) {
 
 	AdjMatrixGraph.printStats();
 
-
-	AdjMatrixGraph.DFS("A");
+	AdjMatrixGraph.DFT("A");
 	std::cout << std::endl;
 
-	AdjMatrixGraph.BFS("A");
+	AdjMatrixGraph.BFT("A");
 	std::cout << std::endl;
 
 	std::cout << AdjMatrixGraph.get_weight_of("A", "B") << std::endl;

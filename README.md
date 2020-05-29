@@ -6,7 +6,7 @@ This graph utilizes unordered_maps to store vertices with its key in an unordere
  <br>
  <br>
  <strong>Functions supported:</strong><br> 
- Elementary Circuit Finding Algorithm as per DONALD B. JOHNSON<a href = "https://www.cs.tufts.edu/comp/150GA/homeworks/hw1/Johnson%2075.PDF">*</a><br>
+ Elementary Circuit Finding Algorithm as per Donald B. Johnson method<a href = "https://www.cs.tufts.edu/comp/150GA/homeworks/hw1/Johnson%2075.PDF">*</a><br>
   Depth First Traversal Algorithm<br> 
   Breadth First Traversal Algorithm<br> 
   <br>
