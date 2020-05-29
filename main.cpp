@@ -61,8 +61,14 @@ int main(int argc, char **argv) {
 	AdjMatrixGraph.BFT("A");
 	std::cout << std::endl;
 
-	std::cout << AdjMatrixGraph.get_weight_of("A", "B") << std::endl;
-	std::cout << AdjMatrixGraph.get_weight_of("A", "A") << std::endl;
+	if(AdjMatrixGraph.isEdge("A", "B"))
+		std::cout << AdjMatrixGraph.get_edge("A", "B")->getWeight() << std::endl;
+	else
+		std::cout << "No edge" << std::endl;
+	if(AdjMatrixGraph.isEdge("A", "A"))
+		std::cout << AdjMatrixGraph.get_edge("A", "A")->getWeight() << std::endl;
+	else
+		std::cout << "No edge" << std::endl;
 
 	AdjMatrixGraph.getJohnsonElementaryPaths();
 
