@@ -70,7 +70,7 @@ public:
 
 	void BFT(const KEY &key);
 
-	void getJohnsonElementaryPaths();
+	void getJohnsonElementaryPaths(std::vector<std::vector<EDGE>> &paths);
 
 	void printStats();
 
@@ -143,7 +143,7 @@ void HashGraph<VERTEX, EDGE, KEY>::rehash() {
 }
 
 template<typename VERTEX, typename EDGE, typename KEY>
-void HashGraph<VERTEX, EDGE, KEY>::_DFT(const KEY &aVertex, std::unordered_map<KEY, bool>& visited) {
+void HashGraph<VERTEX, EDGE, KEY>::_DFT(const KEY &aVertex, std::unordered_map<KEY, bool> &visited) {
 	std::cout << aVertex << " ";
 	visited[aVertex] = true;
 
@@ -197,7 +197,7 @@ void HashGraph<VERTEX, EDGE, KEY>::BFT(const KEY &key) {
 }
 
 template<typename VERTEX, typename EDGE, typename KEY>
-void HashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths() {
+void HashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths(std::vector<std::vector<EDGE>> &paths) {
 	size_t graph_size = vertices.size();
 	std::unordered_map<KEY, std::vector<KEY>> Ak(graph_size);
 	std::unordered_map<KEY, std::deque<KEY>> B(graph_size);
@@ -205,29 +205,44 @@ void HashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths() {
 	std::vector<KEY> stack;
 	KEY s;
 
+	for (auto &i : this->edges) {
+		Ak[i.first.first].push_back(i.first.second);
+	}
+
 	for (auto &i : vertices) {
 		blocked[i.first] = false;
 	}
 
 	std::function<bool(const KEY &)> circuit;
-	circuit = [&Ak, &B, &blocked, &stack, &s, &circuit](const KEY &v) {
+	circuit = [&Ak, &B, &blocked, &stack, &s, &paths, this, &circuit](const KEY &v) {
 		std::function<void()> output_circuit;
-		output_circuit = [&stack, &s]() {
-			for (auto &i : stack) {
-				std::cout << i << '\n';
+		output_circuit = [&stack, &paths, this, &s]() {
+			size_t newPathIndex = paths.size();
+			paths.emplace_back();
+			size_t index_of_last_stack_element = stack.size() - 1;
+			for (size_t i = 0; i < index_of_last_stack_element; ++i) {
+				const KEY &fromVertex = stack[i];
+				const KEY &toVertex = stack[i + 1];
+				paths[newPathIndex].push_back(this->get_edge(fromVertex, toVertex));
 			}
-			std::cout << s << "\n\n";
+			paths[newPathIndex].push_back(this->get_edge(stack[index_of_last_stack_element], s));
+/*
+			for (auto &i : stack){
+				std::cout << i << std::endl;
+			}
+			std::cout << s << std::endl << std::endl;
+*/
 		};
 
 		bool f;
-		std::function<void(const KEY&)> unblock;
-		unblock = [&B, &blocked, &unblock](const KEY& u) {
+		std::function<void(const KEY &)> unblock;
+		unblock = [&B, &blocked, &unblock](const KEY &u) {
 			blocked[u] = false;
 			std::deque<KEY> &B_u = B[u];
 			size_t B_u_size = B_u.size();
 
 			for (size_t i = 0; i < B_u_size; i++) {
-				const KEY& w = B_u.front();
+				const KEY w = B_u.front();
 				B_u.pop_front();
 				if (blocked[w])
 					unblock(w);
@@ -258,27 +273,15 @@ void HashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths() {
 		return f;
 	};
 
-	std::function<void(std::unordered_map<KEY, std::vector<KEY>> &)> generate_adjacency_structure;
-	generate_adjacency_structure = [this](std::unordered_map<KEY, std::vector<KEY>> &Ak) {
-		for (auto &i : this->edges) {
-			Ak[i.first.first].push_back(i.first.second);
-		}
-	};
-
 	stack.clear();
-	generate_adjacency_structure(Ak);
 
-	for (auto& s_iter : vertices) {
-		if (!Ak.empty()) {
-			s = s_iter.first;
-			for (auto &&i = vertices.find(s); i != vertices.end(); ++i) {
-				blocked[i->first] = false;;
-				B[i->first].clear();
-			}
-			circuit(s);
-		} else {
-			break;
+	for (auto &s_iter : vertices) {
+		s = s_iter.first;
+		for (auto &&i = vertices.find(s); i != vertices.end(); ++i) {
+			blocked[i->first] = false;
+			B[i->first].clear();
 		}
+		circuit(s);
 	}
 }
 
@@ -303,7 +306,7 @@ size_t HashGraph<VERTEX, EDGE, KEY>::getStructureSize() {
 	#endif
 
 	#if EDGES_TYPE == UNORDERED_MAP
-
+	//The following method was extracted from: https://stackoverflow.com/a/22500304
 	auto entrySizeE = sizeof(KeyPair) + sizeof(EDGE) + sizeof(void *);
 	totalSizeE = adminSize + edges.size() * entrySizeE + edges.bucket_count() * bucketSize;
 
@@ -313,7 +316,6 @@ size_t HashGraph<VERTEX, EDGE, KEY>::getStructureSize() {
 	totalSizeE += contentSizeE;
 	#elif EDGES_TYPE == MAP
 	totalSizeE = sizeof(edges) + edges.size() * (sizeof(typename decltype(edges)::key_type) + sizeof(typename decltype(edges)::mapped_type));
-
 	#endif
 
 	return totalSizeV + totalSizeE;
