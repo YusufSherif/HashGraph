@@ -239,9 +239,8 @@ void HashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths(std::vector<std::ve
 		unblock = [&B, &blocked, &unblock](const KEY &u) {
 			blocked[u] = false;
 			std::deque<KEY> &B_u = B[u];
-			size_t B_u_size = B_u.size();
 
-			for (size_t i = 0; i < B_u_size; i++) {
+			while (!B_u.empty()) {
 				const KEY w = B_u.front();
 				B_u.pop_front();
 				if (blocked[w])
@@ -257,7 +256,7 @@ void HashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths(std::vector<std::ve
 				output_circuit();
 				f = true;
 			} else if (!blocked[w]) {
-				if (circuit(w)) f = true;
+				f = circuit(w);
 			}
 		}
 		if (f) {
