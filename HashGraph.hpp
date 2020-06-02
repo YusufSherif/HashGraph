@@ -70,7 +70,9 @@ public:
 
 	void BFT(const KEY &key);
 
-	void getJohnsonElementaryPaths(std::vector<std::vector<EDGE>> &paths);
+	void getJohnsonElementaryPaths(std::vector<std::vector<EDGE>> &paths,
+	                               size_t lowerLimit = 1,
+	                               size_t upperLimit = SIZE_T_MAX);
 
 	void printStats();
 
@@ -197,7 +199,9 @@ void HashGraph<VERTEX, EDGE, KEY>::BFT(const KEY &key) {
 }
 
 template<typename VERTEX, typename EDGE, typename KEY>
-void HashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths(std::vector<std::vector<EDGE>> &paths) {
+void HashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths(std::vector<std::vector<EDGE>> &paths,
+                                                             size_t lowerLimit,
+                                                             size_t upperLimit) {
 	size_t graph_size = vertices.size();
 	std::unordered_map<KEY, std::vector<KEY>> Ak(graph_size);
 	std::unordered_map<KEY, std::deque<KEY>> B(graph_size);
@@ -214,9 +218,10 @@ void HashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths(std::vector<std::ve
 	}
 
 	std::function<bool(const KEY &)> circuit;
-	circuit = [&Ak, &B, &blocked, &stack, &s, &paths, this, &circuit](const KEY &v) {
+	circuit = [&Ak, &B, &blocked, &stack, &s, &paths, &lowerLimit, &upperLimit, this, &circuit](const KEY &v) {
 		std::function<void()> output_circuit;
 		output_circuit = [&stack, &paths, this, &s]() {
+//*
 			size_t newPathIndex = paths.size();
 			paths.emplace_back();
 			size_t index_of_last_stack_element = stack.size() - 1;
@@ -226,12 +231,12 @@ void HashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths(std::vector<std::ve
 				paths[newPathIndex].push_back(this->get_edge(fromVertex, toVertex));
 			}
 			paths[newPathIndex].push_back(this->get_edge(stack[index_of_last_stack_element], s));
-/*
-			for (auto &i : stack){
+/*/
+			for (auto &i : stack) {
 				std::cout << i << std::endl;
 			}
 			std::cout << s << std::endl << std::endl;
-*/
+//*/
 		};
 
 		bool f;
@@ -249,11 +254,16 @@ void HashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths(std::vector<std::ve
 		};
 
 		f = false;
+		if (stack.size() > upperLimit)
+			return false;
+
 		stack.push_back(v);
 		blocked[v] = true;
 		for (auto &w : Ak[v]) {
 			if (w == s) {
-				output_circuit();
+				if (stack.size() > lowerLimit - 1) {
+					output_circuit();
+				}
 				f = true;
 			} else if (!blocked[w]) {
 				f = circuit(w);
