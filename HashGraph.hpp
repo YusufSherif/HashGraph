@@ -16,6 +16,7 @@
 #include <unordered_map>
 #include <stack>
 #include <map>
+#include <set>
 
 #include "KeyPairHasher.hpp"
 
@@ -73,6 +74,8 @@ public:
 	void getJohnsonElementaryPaths(std::vector<std::vector<EDGE>> &paths,
 	                               size_t lowerLimit = 1,
 	                               size_t upperLimit = SIZE_T_MAX);
+
+	void getTarjanSCC(std::multimap<size_t, std::set<KEY>> &SCCs, const std::unordered_map<KEY, VERTEX> *l_vertices = NULL);
 
 	void printStats();
 
@@ -203,22 +206,28 @@ void HashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths(std::vector<std::ve
                                                              size_t lowerLimit,
                                                              size_t upperLimit) {
 	size_t graph_size = vertices.size();
-	std::unordered_map<KEY, std::vector<KEY>> Ak(graph_size);
+	std::multimap<size_t, std::set<KEY>> Ak;
 	std::unordered_map<KEY, std::deque<KEY>> B(graph_size);
-	std::unordered_map<KEY, bool> blocked;
+	std::unordered_map<KEY, bool> blocked(graph_size);
 	std::vector<KEY> stack;
 	KEY s;
 
-	for (auto &i : this->edges) {
-		Ak[i.first.first].push_back(i.first.second);
+	std::unordered_map<KEY, std::vector<KEY>> adjacencyList;
+	std::unordered_map<KEY, VERTEX> l_vertices = vertices;
+
+	for (auto &i : edges) {
+		adjacencyList[i.first.first].push_back(i.first.second);
 	}
 
 	for (auto &i : vertices) {
 		blocked[i.first] = false;
 	}
 
+	upperLimit--; //To accomodate for s outside the stack
+
 	std::function<bool(const KEY &)> circuit;
-	circuit = [&Ak, &B, &blocked, &stack, &s, &paths, &lowerLimit, &upperLimit, this, &circuit](const KEY &v) {
+	circuit =
+	[&B, &blocked, &stack, &s, &paths, &lowerLimit, &upperLimit, adjacencyList, this, &circuit](const KEY &v) {
 		std::function<void()> output_circuit;
 		output_circuit = [&stack, &paths, this, &s]() {
 //*
@@ -259,7 +268,7 @@ void HashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths(std::vector<std::ve
 
 		stack.push_back(v);
 		blocked[v] = true;
-		for (auto &w : Ak[v]) {
+		for (auto w : adjacencyList.at(v)) {
 			if (w == s) {
 				if (stack.size() > lowerLimit - 1) {
 					output_circuit();
@@ -272,7 +281,7 @@ void HashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths(std::vector<std::ve
 		if (f) {
 			unblock(v);
 		} else {
-			for (auto &w : Ak[v]) {
+			for (auto w : adjacencyList.at(v)) {
 				std::deque<KEY> &B_w = B[w];
 				if (std::find(B_w.begin(), B_w.end(), v) == B_w.end())
 					B_w.push_back(v);
@@ -284,14 +293,96 @@ void HashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths(std::vector<std::ve
 
 	stack.clear();
 
-	for (auto &s_iter : vertices) {
-		s = s_iter.first;
-		for (auto &&i = vertices.find(s); i != vertices.end(); ++i) {
-			blocked[i->first] = false;
-			B[i->first].clear();
+	for (auto &&s_iter = vertices.begin(); s_iter != vertices.end(); ++s_iter) {
+		getTarjanSCC(Ak, &l_vertices);
+		if (!Ak.empty()) {
+			std::set<KEY> &subgraph = Ak.begin()->second;
+			s = *subgraph.begin();
+			for (typename std::set<KEY>::iterator i = subgraph.begin(), end = subgraph.end(); i != end; ++i) {
+				blocked[*i] = false;
+				B[*i].clear();
+			}
+			circuit(s);
+			l_vertices.erase(s);
+		} else {
+			break;
 		}
-		circuit(s);
+		Ak.clear();
 	}
+}
+
+template<typename VERTEX, typename EDGE, typename KEY>
+void HashGraph<VERTEX, EDGE, KEY>::getTarjanSCC(std::multimap<size_t, std::set<KEY>> &SCCs,
+                                                const std::unordered_map<KEY, VERTEX> *l_vertices) {
+	if (l_vertices == NULL)
+		l_vertices = &(this->vertices);
+
+	class tarjan_vertex {
+	public:
+		size_t index;
+		size_t lowlink;
+		bool undefined_index;
+		bool on_stack;
+	public:
+		tarjan_vertex() {
+			on_stack = false;
+			undefined_index = true;
+		}
+
+		~tarjan_vertex() = default;
+	};
+
+	std::unordered_map<KEY, tarjan_vertex> tarjan_vertices;
+	std::stack<KEY> stack_S;
+	size_t index = 0;
+
+	for (auto &i : *l_vertices)
+		tarjan_vertices[i.first] = tarjan_vertex();
+
+	std::function<void(const KEY &)> strong_connect;
+	strong_connect = [&index, &tarjan_vertices, &stack_S, &SCCs, l_vertices, this, &strong_connect](const KEY &v_key) {
+		tarjan_vertex &v = tarjan_vertices[v_key];
+		v.index = index;
+		v.lowlink = index;
+		index++;
+		v.undefined_index = false;
+		stack_S.push(v_key);
+		v.on_stack = true;
+
+		for (auto &i : *l_vertices) {
+			const KEY &w_key = i.first;
+			const tarjan_vertex &w = tarjan_vertices[w_key];
+
+			if (isEdge(v_key, w_key)) {
+				if (w.undefined_index) {
+					strong_connect(w_key);
+					v.lowlink = std::min(v.lowlink, w.lowlink);
+				} else if (w.on_stack) {
+					v.lowlink = std::min(v.lowlink, w.index);
+				}
+			}
+		}
+		if (v.lowlink == v.index) {
+			std::set<KEY> set;
+			KEY w_key;
+			do {
+				w_key = stack_S.top();
+				tarjan_vertex &w = tarjan_vertices[w_key];
+				stack_S.pop();
+				w.on_stack = false;
+				set.insert(w_key);
+			} while (w_key != v_key);
+			size_t set_size = set.size();
+			if(set_size>1)
+				SCCs.insert(std::move(std::pair<size_t, std::set<KEY>>(set_size, std::move(set))));
+		}
+	};
+
+	for (auto &i : tarjan_vertices) {
+		if (i.second.undefined_index)
+			strong_connect(i.first);
+	}
+
 }
 
 template<typename VERTEX, typename EDGE, typename KEY>
