@@ -1,15 +1,15 @@
 #include <Graph/Edge.hpp>
 #include <Graph/Vertex.hpp>
 #include <iomanip>
-#include "Graph/HashGraph.hpp"
+#include "Graph/Undirected/UndirectedHashGraph.hpp"
 
 int main(int argc, char **argv) {
 	srandom(time(NULL));
 
-	HashGraph<Vertex<std::string> *, std::pair<Edge *, size_t> *> hash_graph(4);
+	UndirectedHashGraph<Vertex<std::string> *, std::pair<Edge *, size_t> *> hash_graph(4);
 
 	Vertex<std::string> A, B, C, D;
-	Edge AB, BD, DC, CA;
+	Edge AB("AB"), BD("BD"), DC("DC"), CA("CA");
 	hash_graph.add_vertex(std::string("A"), &A);
 	hash_graph.add_vertex(std::string("B"), &B);
 	hash_graph.add_vertex(std::string("C"), &C);
@@ -26,17 +26,18 @@ int main(int argc, char **argv) {
 
 	hash_graph.add_edge(("C"),
 	                    ("A"),
-	                    &BDp);
+	                    &CAp);
 
 	hash_graph.add_edge(("D"),
 	                    ("C"),
-	                    &CAp);
+	                    &DCp);
 
 	hash_graph.add_edge(("B"),
 	                    ("D"),
-	                    &DCp);
+	                    &BDp);
 
 	clock_t start, end;
+	double time_taken;
 	std::ios_base::sync_with_stdio(false);
 
 	int max = 0;
@@ -54,7 +55,7 @@ int main(int argc, char **argv) {
 		}
 	}
 	end = clock();
-	double time_taken = double(end - start) / double(CLOCKS_PER_SEC);
+	time_taken = double(end - start) / double(CLOCKS_PER_SEC);
 	std::cout << "Time taken by insertion is : " << std::fixed
 	          << time_taken << std::setprecision(10);
 	std::cout << " sec " << std::endl;
@@ -103,6 +104,13 @@ int main(int argc, char **argv) {
 	std::cout << "Time taken by JEP is : " << std::fixed
 	          << time_taken << std::setprecision(10);
 	std::cout << " sec " << std::endl;
+
+	for (auto &i : x) {
+		for (auto &j : i){
+			std::cout << j->first->id << std::endl;
+		}
+		std::cout << std::endl;
+	}
 	return 0;
 
 }

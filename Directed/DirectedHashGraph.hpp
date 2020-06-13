@@ -18,10 +18,10 @@
 #include <map>
 #include <set>
 
-#include "KeyPairHasher.hpp"
+#include "AssetGraph/Graph/KeyPairHasher.hpp"
 
 template<typename VERTEX, typename EDGE, typename KEY=std::string>
-class HashGraph {
+class DirectedHashGraph {
 private:
 	void _DFT(const KEY &aVertex, std::unordered_map<KEY, bool> &visited);
 	size_t getStructureSize();
@@ -53,7 +53,7 @@ protected:
 	edges_container edges;
 
 public:
-	HashGraph(size_t size = 0);
+	DirectedHashGraph(size_t size = 0);
 
 	void add_vertex(const KEY &key, const VERTEX &aVertex);
 
@@ -81,11 +81,11 @@ public:
 
 	void rehash();
 
-	~HashGraph() = default;
+	~DirectedHashGraph() = default;
 };
 
 template<typename VERTEX, typename EDGE, typename KEY>
-HashGraph<VERTEX, EDGE, KEY>::HashGraph(size_t size) {
+DirectedHashGraph<VERTEX, EDGE, KEY>::DirectedHashGraph(size_t size) {
 #if VERTICES_TYPE == UNORDERED_MAP
 	vertices.reserve(size);
 #endif
@@ -95,48 +95,48 @@ HashGraph<VERTEX, EDGE, KEY>::HashGraph(size_t size) {
 }
 
 template<typename VERTEX, typename EDGE, typename KEY>
-void HashGraph<VERTEX, EDGE, KEY>::add_vertex(const KEY &key, const VERTEX &aVertex) {
+void DirectedHashGraph<VERTEX, EDGE, KEY>::add_vertex(const KEY &key, const VERTEX &aVertex) {
 	if (vertices.find(key) != vertices.end()) {
-		std::cerr << "HashGraph: Insertion of duplicate keys! Abroting...\n";
+		std::cerr << "DirectedHashGraph: Insertion of duplicate keys! Abroting...\n";
 		exit(0);
 	}
 	vertices.emplace(key, aVertex);
 }
 
 template<typename VERTEX, typename EDGE, typename KEY>
-VERTEX &HashGraph<VERTEX, EDGE, KEY>::get_vertex(const KEY &key) {
+VERTEX &DirectedHashGraph<VERTEX, EDGE, KEY>::get_vertex(const KEY &key) {
 	return vertices.find(key)->second;
 }
 
 template<typename VERTEX, typename EDGE, typename KEY>
-bool HashGraph<VERTEX, EDGE, KEY>::isVertex(const KEY &key) { //Check if vertex exists
+bool DirectedHashGraph<VERTEX, EDGE, KEY>::isVertex(const KEY &key) { //Check if vertex exists
 	return vertices.find(key) != vertices.end();
 }
 
 template<typename VERTEX, typename EDGE, typename KEY>
-void HashGraph<VERTEX, EDGE, KEY>::add_edge(const KEY &fromVertex, const KEY &toVertex, const EDGE &edge) {
+void DirectedHashGraph<VERTEX, EDGE, KEY>::add_edge(const KEY &fromVertex, const KEY &toVertex, const EDGE &edge) {
 	auto x = edges.find(std::make_pair(fromVertex, toVertex));
 	if (x == edges.end()) {
 		edges.emplace(std::pair(fromVertex, toVertex), edge);
 	} else {
-		std::cerr << "HashGraph: Insertion of a duplicate edge! Abroting...\n";
+		std::cerr << "DirectedHashGraph: Insertion of a duplicate edge! Abroting...\n";
 		exit(0);
 	}
 
 }
 
 template<typename VERTEX, typename EDGE, typename KEY>
-EDGE &HashGraph<VERTEX, EDGE, KEY>::get_edge(const KEY &fromVertex, const KEY &toVertex) {
+EDGE &DirectedHashGraph<VERTEX, EDGE, KEY>::get_edge(const KEY &fromVertex, const KEY &toVertex) {
 	return edges.find(std::make_pair(fromVertex, toVertex))->second;
 }
 
 template<typename VERTEX, typename EDGE, typename KEY>
-bool HashGraph<VERTEX, EDGE, KEY>::isEdge(const KEY &fromVertex, const KEY &toVertex) { //Check if edge exists
+bool DirectedHashGraph<VERTEX, EDGE, KEY>::isEdge(const KEY &fromVertex, const KEY &toVertex) { //Check if edge exists
 	return edges.find(std::make_pair(fromVertex, toVertex)) != edges.end();
 }
 
 template<typename VERTEX, typename EDGE, typename KEY>
-void HashGraph<VERTEX, EDGE, KEY>::rehash() {
+void DirectedHashGraph<VERTEX, EDGE, KEY>::rehash() {
 	#if VERTICES_TYPE == UNORDERED_MAP
 	vertices.rehash(0);
 	#elif VERTICES_TYPE == MAP
@@ -148,7 +148,7 @@ void HashGraph<VERTEX, EDGE, KEY>::rehash() {
 }
 
 template<typename VERTEX, typename EDGE, typename KEY>
-void HashGraph<VERTEX, EDGE, KEY>::_DFT(const KEY &aVertex, std::unordered_map<KEY, bool> &visited) {
+void DirectedHashGraph<VERTEX, EDGE, KEY>::_DFT(const KEY &aVertex, std::unordered_map<KEY, bool> &visited) {
 	std::cout << aVertex << " ";
 	visited[aVertex] = true;
 
@@ -163,7 +163,7 @@ void HashGraph<VERTEX, EDGE, KEY>::_DFT(const KEY &aVertex, std::unordered_map<K
 }
 
 template<typename VERTEX, typename EDGE, typename KEY>
-void HashGraph<VERTEX, EDGE, KEY>::DFT(const KEY &key) {
+void DirectedHashGraph<VERTEX, EDGE, KEY>::DFT(const KEY &key) {
 	std::unordered_map<KEY, bool> visited;
 	for (auto &i : vertices) {
 		visited[i.first] = false;
@@ -173,7 +173,7 @@ void HashGraph<VERTEX, EDGE, KEY>::DFT(const KEY &key) {
 }
 
 template<typename VERTEX, typename EDGE, typename KEY>
-void HashGraph<VERTEX, EDGE, KEY>::BFT(const KEY &key) {
+void DirectedHashGraph<VERTEX, EDGE, KEY>::BFT(const KEY &key) {
 	std::unordered_map<KEY, bool> visited;
 	for (auto &i : vertices) {
 		visited[i.first] = false;
@@ -202,9 +202,9 @@ void HashGraph<VERTEX, EDGE, KEY>::BFT(const KEY &key) {
 }
 
 template<typename VERTEX, typename EDGE, typename KEY>
-void HashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths(std::vector<std::vector<EDGE>> &paths,
-                                                             size_t lowerLimit,
-                                                             size_t upperLimit) {
+void DirectedHashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths(std::vector<std::vector<EDGE>> &paths,
+                                                                     size_t lowerLimit,
+                                                                     size_t upperLimit) {
 	size_t graph_size = vertices.size();
 	std::multimap<size_t, std::set<KEY>> Ak;
 	std::unordered_map<KEY, std::deque<KEY>> B(graph_size);
@@ -312,8 +312,8 @@ void HashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths(std::vector<std::ve
 }
 
 template<typename VERTEX, typename EDGE, typename KEY>
-void HashGraph<VERTEX, EDGE, KEY>::getTarjanSCC(std::multimap<size_t, std::set<KEY>> &SCCs,
-                                                const std::unordered_map<KEY, VERTEX> *l_vertices) {
+void DirectedHashGraph<VERTEX, EDGE, KEY>::getTarjanSCC(std::multimap<size_t, std::set<KEY>> &SCCs,
+                                                        const std::unordered_map<KEY, VERTEX> *l_vertices) {
 	if (l_vertices == NULL)
 		l_vertices = &(this->vertices);
 
@@ -386,7 +386,7 @@ void HashGraph<VERTEX, EDGE, KEY>::getTarjanSCC(std::multimap<size_t, std::set<K
 }
 
 template<typename VERTEX, typename EDGE, typename KEY>
-size_t HashGraph<VERTEX, EDGE, KEY>::getStructureSize() {
+size_t DirectedHashGraph<VERTEX, EDGE, KEY>::getStructureSize() {
 	size_t totalSizeV = 0, totalSizeE = 0;
 	auto adminSize = 3 * sizeof(void *) + sizeof(size_t);
 	auto bucketSize = sizeof(void *);
@@ -423,7 +423,7 @@ size_t HashGraph<VERTEX, EDGE, KEY>::getStructureSize() {
 }
 
 template<typename VERTEX, typename EDGE, typename KEY>
-void HashGraph<VERTEX, EDGE, KEY>::printStats() {
+void DirectedHashGraph<VERTEX, EDGE, KEY>::printStats() {
 
 	std::cout << "\nStats: " << "\n"
 	          << "Rough Estimate of structure: " << getStructureSize() << "B" << "\n\n"
