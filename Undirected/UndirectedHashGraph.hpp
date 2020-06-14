@@ -18,6 +18,7 @@
 #include <map>
 #include <set>
 #include <AssetGraph/Graph/KeyPairHasher.hpp>
+#include <unordered_set>
 #include "unordered_pair.hpp"
 
 template<typename VERTEX, typename EDGE, typename KEY=std::string>
@@ -52,6 +53,8 @@ protected:
 	vertices_container vertices;
 	edges_container edges;
 
+	typedef std::set<KEY> SCC_container;
+
 public:
 	UndirectedHashGraph(size_t size = 0);
 
@@ -75,8 +78,8 @@ public:
 	                               size_t lowerLimit = 1,
 	                               size_t upperLimit = SIZE_T_MAX);
 
-	void getTarjanSCC(std::multimap<size_t, std::set<KEY>> &SCCs,
-	                  std::set<KEY> *l_vertices = NULL);
+	void getTarjanSCC(std::multimap<size_t, SCC_container> &SCCs,
+	                  SCC_container *l_vertices = NULL);
 
 	void printStats();
 
@@ -206,13 +209,14 @@ template<typename VERTEX, typename EDGE, typename KEY>
 void UndirectedHashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths(std::vector<std::vector<EDGE>> &paths,
                                                                        size_t lowerLimit,
                                                                        size_t upperLimit) {
-	std::multimap<size_t, std::set<KEY>> Ak;
+	std::multimap<size_t, SCC_container> Ak;
+	std::unordered_map<KeyPair, std::deque<KeyPair>, KeyPair_Hasher> B(vertices.size());
 	std::unordered_map<KeyPair, bool, KeyPair_Hasher> blocked(edges.size());
 	std::vector<KeyPair> stack;
 	KEY s;
 
 	std::unordered_map<KEY, std::vector<KEY>> adjacencyList;
-	std::set<KEY> l_vertices;
+	SCC_container l_vertices;
 
 	for (auto &i : vertices) {
 		l_vertices.insert(i.first);
@@ -236,10 +240,12 @@ void UndirectedHashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths(std::vect
 	upperLimit--;
 	lowerLimit--;
 
+
 	std::function<bool(const KEY &, const KEY &)> circuit;
 	circuit =
-	[&blocked, &stack, &s, &paths, &lowerLimit, &upperLimit, adjacencyList, this, &circuit](const KEY &v,
-	                                                                                        const KEY &v_next) {
+	[&B, &l_vertices, &blocked, &stack, &s, &paths, &lowerLimit, &upperLimit, &adjacencyList, this, &circuit](
+	const KEY &v,
+	const KEY &v_next) {
 		std::function<void()> output_circuit;
 		output_circuit = [&stack, &paths, this]() {
 //*
@@ -261,6 +267,20 @@ void UndirectedHashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths(std::vect
 		};
 
 		bool f;
+/*
+		std::function<void(const KeyPair &)> unblock;
+		unblock = [&B, &blocked, &unblock](const KeyPair &edge_u) {
+			blocked.at(edge_u) = false;
+			std::deque<KeyPair> &B_u = B[edge_u];
+
+			while (!B_u.empty()) {
+				KeyPair w = B_u.front();
+				B_u.pop_front();
+				if (blocked.at(w))
+					unblock(w);
+			}
+		};
+*/
 
 		f = false;
 		if (stack.size() >= upperLimit) //Bounds the circuit length
@@ -270,51 +290,70 @@ void UndirectedHashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths(std::vect
 
 		stack.push_back(v_edge);
 		blocked[v_edge] = true;
+
 		for (auto w : adjacencyList.at(v_next)) {
-			KeyPair v_next_edge(v_next,w);
-			if (w == s) {
-				//Push back last edge.
-				stack.push_back(v_next_edge);
+			//if(l_vertices.find(w)==l_vertices.end()) continue;
+			KeyPair v_next_edge(v_next, w);
+			if (!blocked[v_next_edge])
+			{
+				if (w == s) {
 
-				if (stack.size() > lowerLimit) { //Suppresses the circuit from getting output if is lower than limit
-					output_circuit();
+						//Push back last edge.
+						stack.push_back(v_next_edge);
+
+						if (stack.size()> lowerLimit) { //Suppresses the circuit from getting output if is lower than limit
+							output_circuit();
+						}
+						f = true;
+
+						//Pop it out to negate pushing it in to keep stack balanced thru the rest of the algo.
+						stack.pop_back();
+
+
+				} else {
+					f = circuit(v_next, w);
 				}
-				f = true;
-
-				//Pop it out to negate pushing it in to keep stack balanced thru the rest of the algo.
-				stack.pop_back();
-			} else if (!blocked[v_next_edge]) {
-				f = circuit(v_next, w);
 			}
 		}
 		blocked[v_edge] = false;
-
+/*
+		if (f) {
+			unblock(KeyPair(v, v_next));
+		} else {
+			for (auto w : adjacencyList.at(v_next)) {
+				std::deque<KeyPair> &B_w = B[KeyPair(v_next, w)];
+				if (std::find(B_w.begin(), B_w.end(), KeyPair(v, v_next)) == B_w.end())
+					B_w.push_back(KeyPair(v, v_next));
+			}
+		}
+*/
 		stack.pop_back();
 		return f;
 	};
 
-
-	std::function<void(std::multimap<size_t, std::set<KEY>> &)> getCircuits =
-	[&s, &blocked, &l_vertices, &adjacencyList, this, &circuit, &getCircuits](std::multimap<size_t,
-	                                                                                        std::set<KEY>> &Ak) {
-		std::multimap<size_t, std::set<KEY>> Ak_local;
+	std::function<void(std::multimap<size_t, SCC_container> &)> getCircuits =
+	[&s, &B, &blocked, &l_vertices, &adjacencyList, this, &circuit, &getCircuits](std::multimap<
+	size_t,
+	SCC_container> &Ak) {
+		std::multimap<size_t, SCC_container> Ak_local;
 
 		//Iterate over strongly connected components of graph G
 		for (auto &i : Ak) {
 			//Move the ith component to Ak_local
-			Ak_local.insert(std::move(std::pair<size_t, std::set<KEY>>(std::move(i.first), std::move(i.second))));
+			Ak_local.insert(std::move(std::pair<size_t, SCC_container>(std::move(i.first), std::move(i.second))));
 			while ((!Ak_local.empty())) {
 				if (Ak_local.size() == 1) {
 
 					//Initially this points to the ith component. When later a vertex is removed, this opens up space,
 					//for more than 1 SCC to exist within this subset. However, subgraph will always point to the first.
-					std::set<KEY> &subgraph = Ak_local.begin()->second;
+					SCC_container &subgraph = Ak_local.begin()->second;
 
 					//Choosing the smallest vertex in that subgraph as per KEY order criteria.
 					s = *subgraph.begin();
 
 					//Clearing the blocked. See note above as to why we don't use a loop anymore.
 					blocked.clear();
+					B.clear();
 					/*
 					for (auto i : edges) {
 						blocked.at(i.first) = false;
@@ -322,15 +361,15 @@ void UndirectedHashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths(std::vect
 					}
 					*/
 
+					l_vertices = std::move(subgraph);
+
 					//Since s is within a strongly connected component it needs to have at least one adjacent vertex.
 					for (auto ii : adjacencyList.at(s)) {
 						circuit(s, ii);
 					}
 
 					//Removing vertex s for next iteration since it has all its circuits have already been found.
-					subgraph.erase(s);
-
-					l_vertices = std::move(subgraph);
+					l_vertices.erase(s);
 
 					Ak_local.clear();
 					getTarjanSCC(Ak_local, &l_vertices);
@@ -348,10 +387,10 @@ void UndirectedHashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths(std::vect
 }
 
 template<typename VERTEX, typename EDGE, typename KEY>
-void UndirectedHashGraph<VERTEX, EDGE, KEY>::getTarjanSCC(std::multimap<size_t, std::set<KEY>> &SCCs,
-                                                          std::set<KEY> *l_vertices) {
+void UndirectedHashGraph<VERTEX, EDGE, KEY>::getTarjanSCC(std::multimap<size_t, SCC_container> &SCCs,
+                                                          SCC_container *l_vertices) {
 	if (l_vertices == NULL) {
-		l_vertices = new(std::set<KEY>);
+		l_vertices = new(SCC_container);
 		for (auto &i: vertices) {
 			l_vertices->insert(i.first);
 		}
@@ -405,7 +444,7 @@ void UndirectedHashGraph<VERTEX, EDGE, KEY>::getTarjanSCC(std::multimap<size_t, 
 			}
 		}
 		if (v.lowlink == v.index) {
-			std::set<KEY> set;
+			SCC_container set;
 			KEY w_key;
 			do {
 				w_key = std::move(stack_S.top());
@@ -416,7 +455,7 @@ void UndirectedHashGraph<VERTEX, EDGE, KEY>::getTarjanSCC(std::multimap<size_t, 
 			} while (w_key != v_key);
 			size_t set_size = set.size();
 			if (set_size > 1) {
-				SCCs.insert(std::move(std::pair<size_t, std::set<KEY>>(set_size, std::move(set))));
+				SCCs.insert(std::move(std::pair<size_t, SCC_container>(set_size, std::move(set))));
 			}
 		}
 	};
@@ -427,7 +466,7 @@ void UndirectedHashGraph<VERTEX, EDGE, KEY>::getTarjanSCC(std::multimap<size_t, 
 	}
 
 	if (l_vertices == NULL) {
-		delete(l_vertices);
+		delete (l_vertices);
 	}
 }
 
