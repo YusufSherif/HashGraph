@@ -210,12 +210,11 @@ void UndirectedHashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths(std::vect
                                                                        size_t lowerLimit,
                                                                        size_t upperLimit) {
 	std::multimap<size_t, SCC_container> Ak;
-	std::unordered_map<KeyPair, std::deque<KeyPair>, KeyPair_Hasher> B(vertices.size());
 	std::unordered_map<KeyPair, bool, KeyPair_Hasher> blocked(edges.size());
 	std::vector<KeyPair> stack;
 	KEY s;
 
-	std::unordered_map<KEY, std::vector<KEY>> adjacencyList;
+	std::unordered_map<KEY, std::unordered_set<KEY>> adjacencyList;
 	SCC_container l_vertices;
 
 	for (auto &i : vertices) {
@@ -223,8 +222,8 @@ void UndirectedHashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths(std::vect
 	}
 
 	for (auto &i : edges) {
-		adjacencyList[i.first.first].push_back(i.first.second);
-		adjacencyList[i.first.second].push_back(i.first.first);
+		adjacencyList[i.first.first].insert(i.first.second);
+		adjacencyList[i.first.second].insert(i.first.first);
 	}
 
 
@@ -240,10 +239,9 @@ void UndirectedHashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths(std::vect
 	upperLimit--;
 	lowerLimit--;
 
-
 	std::function<bool(const KEY &, const KEY &)> circuit;
 	circuit =
-	[&B, &l_vertices, &blocked, &stack, &s, &paths, &lowerLimit, &upperLimit, &adjacencyList, this, &circuit](
+	[&blocked, &stack, &s, &paths, &lowerLimit, &upperLimit, &adjacencyList, this, &circuit](
 	const KEY &v,
 	const KEY &v_next) {
 		std::function<void()> output_circuit;
@@ -267,20 +265,6 @@ void UndirectedHashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths(std::vect
 		};
 
 		bool f;
-/*
-		std::function<void(const KeyPair &)> unblock;
-		unblock = [&B, &blocked, &unblock](const KeyPair &edge_u) {
-			blocked.at(edge_u) = false;
-			std::deque<KeyPair> &B_u = B[edge_u];
-
-			while (!B_u.empty()) {
-				KeyPair w = B_u.front();
-				B_u.pop_front();
-				if (blocked.at(w))
-					unblock(w);
-			}
-		};
-*/
 
 		f = false;
 		if (stack.size() >= upperLimit) //Bounds the circuit length
@@ -292,47 +276,31 @@ void UndirectedHashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths(std::vect
 		blocked[v_edge] = true;
 
 		for (auto w : adjacencyList.at(v_next)) {
-			//if(l_vertices.find(w)==l_vertices.end()) continue;
 			KeyPair v_next_edge(v_next, w);
-			if (!blocked[v_next_edge])
-			{
+			if (!blocked[v_next_edge]) {
 				if (w == s) {
+					//Push back last edge.
+					stack.push_back(v_next_edge);
 
-						//Push back last edge.
-						stack.push_back(v_next_edge);
+					if (stack.size() > lowerLimit) { //Suppresses the circuit from getting output if is lower than limit
+						output_circuit();
+					}
+					f = true;
 
-						if (stack.size()> lowerLimit) { //Suppresses the circuit from getting output if is lower than limit
-							output_circuit();
-						}
-						f = true;
-
-						//Pop it out to negate pushing it in to keep stack balanced thru the rest of the algo.
-						stack.pop_back();
-
-
+					//Pop it out to negate pushing it in to keep stack balanced thru the rest of the algo.
+					stack.pop_back();
 				} else {
 					f = circuit(v_next, w);
 				}
 			}
 		}
 		blocked[v_edge] = false;
-/*
-		if (f) {
-			unblock(KeyPair(v, v_next));
-		} else {
-			for (auto w : adjacencyList.at(v_next)) {
-				std::deque<KeyPair> &B_w = B[KeyPair(v_next, w)];
-				if (std::find(B_w.begin(), B_w.end(), KeyPair(v, v_next)) == B_w.end())
-					B_w.push_back(KeyPair(v, v_next));
-			}
-		}
-*/
 		stack.pop_back();
 		return f;
 	};
 
 	std::function<void(std::multimap<size_t, SCC_container> &)> getCircuits =
-	[&s, &B, &blocked, &l_vertices, &adjacencyList, this, &circuit, &getCircuits](std::multimap<
+	[&s, &blocked, &l_vertices, &adjacencyList, this, &circuit, &getCircuits](std::multimap<
 	size_t,
 	SCC_container> &Ak) {
 		std::multimap<size_t, SCC_container> Ak_local;
@@ -353,7 +321,6 @@ void UndirectedHashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths(std::vect
 
 					//Clearing the blocked. See note above as to why we don't use a loop anymore.
 					blocked.clear();
-					B.clear();
 					/*
 					for (auto i : edges) {
 						blocked.at(i.first) = false;
@@ -361,13 +328,15 @@ void UndirectedHashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths(std::vect
 					}
 					*/
 
-					l_vertices = std::move(subgraph);
-
 					//Since s is within a strongly connected component it needs to have at least one adjacent vertex.
-					for (auto ii : adjacencyList.at(s)) {
-						circuit(s, ii);
+					for (auto it = adjacencyList.at(s).begin(), end = adjacencyList.at(s).end(); it != end;) {
+						circuit(s, *it);
+						adjacencyList.at(*it).erase(s);
+						adjacencyList.at(s).erase(it++);
+						//Because set iterators are invalidated(?), See: https://stackoverflow.com/q/2874441
 					}
 
+					l_vertices = std::move(subgraph);
 					//Removing vertex s for next iteration since it has all its circuits have already been found.
 					l_vertices.erase(s);
 
