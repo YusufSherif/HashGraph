@@ -217,11 +217,9 @@ void UndirectedHashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths(std::vect
 	std::unordered_map<KEY, std::unordered_set<KEY>> adjacencyList;
 	SCC_container l_vertices;
 
-	for (auto &i : vertices) {
-		l_vertices.insert(i.first);
-	}
-
 	for (auto &i : edges) {
+		l_vertices.insert(i.first.first);
+		l_vertices.insert(i.first.second);
 		adjacencyList[i.first.first].insert(i.first.second);
 		adjacencyList[i.first.second].insert(i.first.first);
 	}
@@ -299,59 +297,33 @@ void UndirectedHashGraph<VERTEX, EDGE, KEY>::getJohnsonElementaryPaths(std::vect
 		return f;
 	};
 
-	std::function<void(std::multimap<size_t, SCC_container> &)> getCircuits =
-	[&s, &blocked, &l_vertices, &adjacencyList, this, &circuit, &getCircuits](std::multimap<
-	size_t,
-	SCC_container> &Ak) {
-		std::multimap<size_t, SCC_container> Ak_local;
+	std::function<void(SCC_container &)> getCircuits =
+	[&s, &blocked, &l_vertices, &adjacencyList, this, &circuit, &getCircuits](SCC_container &Ak) {
 
-		//Iterate over strongly connected components of graph G
-		for (auto &i : Ak) {
-			//Move the ith component to Ak_local
-			Ak_local.insert(std::move(std::pair<size_t, SCC_container>(std::move(i.first), std::move(i.second))));
-			while ((!Ak_local.empty())) {
-				if (Ak_local.size() == 1) {
+		while (!Ak.empty()) {
 
-					//Initially this points to the ith component. When later a vertex is removed, this opens up space,
-					//for more than 1 SCC to exist within this subset. However, subgraph will always point to the first.
-					SCC_container &subgraph = Ak_local.begin()->second;
+			auto s_iter = Ak.begin();
+			s = *s_iter;
 
-					//Choosing the smallest vertex in that subgraph as per KEY order criteria.
-					s = *subgraph.begin();
+			//Clearing the blocked. See note above as to why we don't use a loop anymore.
+			blocked.clear();
 
-					//Clearing the blocked. See note above as to why we don't use a loop anymore.
-					blocked.clear();
-					/*
-					for (auto i : edges) {
-						blocked.at(i.first) = false;
-						//B.at(i.first).clear();
-					}
-					*/
-
-					//Since s is within a strongly connected component it needs to have at least one adjacent vertex.
-					for (auto it = adjacencyList.at(s).begin(), end = adjacencyList.at(s).end(); it != end;) {
-						circuit(s, *it);
-						adjacencyList.at(*it).erase(s);
-						adjacencyList.at(s).erase(it++);
-						//Because set iterators are invalidated(?), See: https://stackoverflow.com/q/2874441
-					}
-
-					l_vertices = std::move(subgraph);
-					//Removing vertex s for next iteration since it has all its circuits have already been found.
-					l_vertices.erase(s);
-
-					Ak_local.clear();
-					getTarjanSCC(Ak_local, &l_vertices);
-				} else {
-					getCircuits(Ak_local);
-				}
+			//Since s is within a strongly connected component it needs to have at least one adjacent vertex.
+			for (auto it = adjacencyList.at(s).begin(), end_it = adjacencyList.at(s).end(); it != end_it;) {
+				circuit(s, *it);
+				adjacencyList.at(*it).erase(s);
+				adjacencyList.at(s).erase(it++);
+				//Because set iterators are invalidated(?), See: https://stackoverflow.com/q/2874441
 			}
+
+			//Removing vertex s for next iteration since it has all its circuits have already been found.
+			Ak.erase(s_iter);
 		}
+
 	};
 
 	stack.clear();
-	getTarjanSCC(Ak, &l_vertices);
-	getCircuits(Ak);
+	getCircuits(l_vertices);
 
 }
 
